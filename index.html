@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DownloadMoreParts | Virtual Provisioning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#007AFF',
+                        arch: '#1793D1',
+                        fedora: '#51A2DA',
+                        debian: '#D70A53',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono&display=swap');
+        
+        body {
+            transition: background-color 0.4s ease, color 0.4s ease;
+            background-attachment: fixed;
+        }
+
+        .light { background: radial-gradient(circle at top left, #ffffff 0%, #e2e8f0 100%); color: #1C1C1E; }
+        .dark { background: radial-gradient(circle at top left, #1a1a1a 0%, #000000 100%); color: #ffffff; }
+
+        .nav-glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .dark .nav-glass {
+            background: rgba(0, 0, 0, 0.7);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .hidden { display: none; }
+        button:active { transform: scale(0.97); }
+
+        .os-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+        }
+
+        .os-card.selected {
+            border-color: var(--selected-color, #007AFF);
+            background-color: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 30px -5px var(--selected-color);
+        }
+
+        .nav-item {
+            position: relative;
+            transition: color 0.3s ease;
+        }
+        .nav-item.active { color: #007AFF; opacity: 1; }
+        .nav-item.active::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            background: #007AFF;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body class="light min-h-screen flex flex-col font-sans">
+
+    <!-- Top Navigation Bar -->
+    <nav class="nav-glass sticky top-0 z-50 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-8">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="location.reload()">
+                <div class="w-8 h-8 bg-brand rounded-lg flex items-center justify-center shadow-lg shadow-brand/30">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </div>
+                <span class="font-black tracking-tighter text-xl uppercase italic dark:text-white">DownloadMoreParts</span>
+            </div>
+            
+            <div class="hidden md:flex items-center gap-6 text-[11px] font-bold tracking-widest uppercase opacity-80 dark:text-white">
+                <button onclick="setCategory('RAM')" class="nav-item active hover:opacity-100 transition-opacity">RAM</button>
+                <button onclick="setCategory('Storage')" class="nav-item hover:opacity-100 transition-opacity">Storage</button>
+                <button onclick="setCategory('GPU')" class="nav-item hover:opacity-100 transition-opacity">GPU</button>
+                <button onclick="setCategory('CPU')" class="nav-item hover:opacity-100 transition-opacity">CPU</button>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <button onclick="toggleTheme()" class="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-all">
+                <svg id="sun-icon" class="w-5 h-5 hidden dark:block text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                <svg id="moon-icon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+            </button>
+            <div class="h-6 w-px bg-black/10 dark:bg-white/20 mx-2"></div>
+            <div class="flex flex-col text-right">
+                <span class="text-[10px] font-black opacity-40 uppercase tracking-tighter leading-none dark:text-white">Status</span>
+                <span class="text-[10px] font-bold text-emerald-500 leading-none">Online</span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow flex items-center justify-center p-6 md:p-12 relative overflow-hidden">
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-brand/5 rounded-full blur-[120px] pointer-events-none"></div>
+
+        <div class="max-w-4xl w-full relative z-10">
+            
+            <!-- STEP 1: Component Selection -->
+            <section id="step-1" class="space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                <header class="text-center space-y-4">
+                    <h1 class="text-5xl md:text-8xl font-black tracking-tighter dark:text-white" id="main-title">Download RAM.</h1>
+                    <p class="text-slate-500 dark:text-slate-400 text-lg md:text-xl font-medium max-w-xl mx-auto">Select your preferred component architecture to begin cloud virtualization.</p>
+                </header>
+                
+                <div id="selection-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
+                    <!-- Buttons injected by JS -->
+                </div>
+            </section>
+
+            <!-- STEP 1.5: Review (Pros & Cons) -->
+            <section id="step-review" class="space-y-8 hidden animate-in fade-in zoom-in-95 duration-500 text-center">
+                <header class="space-y-2">
+                    <h2 class="text-4xl font-black tracking-tight dark:text-white" id="review-title">Optimization Report</h2>
+                </header>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto text-left">
+                    <div class="p-6 rounded-[32px] bg-emerald-500/10 border border-emerald-500/20">
+                        <div class="flex items-center gap-2 mb-4 text-emerald-500 font-black uppercase text-xs tracking-widest">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                            Performance Pros
+                        </div>
+                        <ul id="pros-list" class="space-y-3 text-sm font-medium opacity-80 dark:text-white"></ul>
+                    </div>
+                    <div class="p-6 rounded-[32px] bg-red-500/10 border border-red-500/20">
+                        <div class="flex items-center gap-2 mb-4 text-red-500 font-black uppercase text-xs tracking-widest">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
+                            Optimization Cons
+                        </div>
+                        <ul id="cons-list" class="space-y-3 text-sm font-medium opacity-80 dark:text-white"></ul>
+                    </div>
+                </div>
+
+                <div class="pt-6 max-w-sm mx-auto space-y-4">
+                    <button onclick="goToStep(2)" class="w-full py-5 rounded-3xl bg-brand text-white font-black text-xl hover:scale-[1.03] active:scale-95 shadow-2xl shadow-brand/40">
+                        Continue to Deploy
+                    </button>
+                    <button onclick="goToStep(1)" class="text-slate-400 hover:text-brand text-xs font-black uppercase tracking-[0.3em]">Change Choice</button>
+                </div>
+            </section>
+
+            <!-- STEP 2: OS Selection -->
+            <section id="step-2" class="space-y-10 hidden animate-in fade-in slide-in-from-right-8 duration-500 text-center">
+                <header class="space-y-2">
+                    <h2 class="text-4xl font-black tracking-tight dark:text-white">Select Architecture.</h2>
+                </header>
+                
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 max-w-4xl mx-auto">
+                    <button onclick="setOs('macOS', '#000000')" class="os-card p-6 rounded-3xl border-2 border-transparent bg-black/5 dark:bg-white/10 flex flex-col items-center">
+                        <svg class="w-8 h-8 mb-3 dark:text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M17.05 20.28c-.98.95-2.05 1.72-3.21 1.72-1.14 0-1.52-.71-2.84-.71-1.32 0-1.74.69-2.84.71-1.08.02-2.12-.73-3.14-1.72-2.08-2.02-3.17-5.75-3.17-8.49 0-4.38 2.75-6.66 5.4-6.66 1.4 0 2.5.88 3.3.88.78 0 2.05-.98 3.53-.98 1.58 0 4.1.6 5.37 2.45-3.15 1.48-2.64 5.36.14 6.54-1.08 2.58-2.54 5.27-4.54 7.26zM12.03 4.3c-.02-1.92 1.6-3.83 3.48-3.83.1 1.95-1.6 3.96-3.48 3.83z"/></svg>
+                        <span class="font-bold text-xs uppercase tracking-widest dark:text-white">macOS</span>
+                    </button>
+                    <button onclick="setOs('Windows', '#007AFF')" class="os-card p-6 rounded-3xl border-2 border-transparent bg-black/5 dark:bg-white/10 flex flex-col items-center">
+                        <svg class="w-8 h-8 mb-3 text-blue-500" fill="currentColor" viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1V11.7H0V3.449zm0 17.102L9.75 21.9V12.3H0v8.251zM10.5 2L24 0v11.7H10.5V2zm0 19.9L24 24V12.3H10.5v9.6z"/></svg>
+                        <span class="font-bold text-xs uppercase tracking-widest dark:text-white">Windows</span>
+                    </button>
+                    <button onclick="setOs('Arch Linux', '#1793D1')" class="os-card p-6 rounded-3xl border-2 border-transparent bg-black/5 dark:bg-white/10 flex flex-col items-center">
+                        <svg class="w-8 h-8 mb-3 text-arch" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.1l-9 17.5c-.3.6-.3 1.2 0 1.8.3.5.9.9 1.5.9h15c.6 0 1.2-.4 1.5-.9.3-.6.3-1.2 0-1.8L12 2.1zm0 3.8l6.8 13.2H5.2L12 5.9z"/></svg>
+                        <span class="font-bold text-xs uppercase tracking-widest dark:text-white">Arch</span>
+                    </button>
+                    <button onclick="setOs('Fedora', '#51A2DA')" class="os-card p-6 rounded-3xl border-2 border-transparent bg-black/5 dark:bg-white/10 flex flex-col items-center">
+                        <svg class="w-8 h-8 mb-3 text-fedora" viewBox="0 0 24 24" fill="currentColor"><path d="M21.5 12c0 5.2-4.3 9.5-9.5 9.5S2.5 17.2 2.5 12 6.8 2.5 12 2.5s9.5 4.3 9.5 9.5zm-5 0c0-2.5-2-4.5-4.5-4.5s-4.5 2-4.5 4.5 2 4.5 4.5 4.5 4.5-2 4.5-4.5z"/></svg>
+                        <span class="font-bold text-xs uppercase tracking-widest dark:text-white">Fedora</span>
+                    </button>
+                    <button onclick="setOs('Debian', '#D70A53')" class="os-card p-6 rounded-3xl border-2 border-transparent bg-black/5 dark:bg-white/10 flex flex-col items-center">
+                        <svg class="w-8 h-8 mb-3 text-debian" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8z"/></svg>
+                        <span class="font-bold text-xs uppercase tracking-widest dark:text-white">Debian</span>
+                    </button>
+                </div>
+
+                <div class="pt-10 max-w-sm mx-auto space-y-4">
+                    <button id="start-btn" disabled onclick="startDownload()" class="w-full py-5 rounded-3xl bg-brand text-white font-black text-xl hover:scale-[1.03] shadow-2xl shadow-brand/40 disabled:opacity-30">
+                        Deploy Provisioning
+                    </button>
+                    <button onclick="goToStep('review')" class="text-slate-400 hover:text-brand text-xs font-black uppercase tracking-[0.3em]">Back to Review</button>
+                </div>
+            </section>
+
+            <!-- STEP 3: Loading -->
+            <section id="step-3" class="space-y-12 py-10 hidden text-center animate-in zoom-in-95 duration-500">
+                <div class="space-y-4">
+                    <h2 class="text-9xl font-black tracking-tighter dark:text-white" id="percent-text">0%</h2>
+                    <p class="text-slate-500 dark:text-slate-400 font-bold uppercase text-xs tracking-widest" id="sub-status">Initiating Stream...</p>
+                </div>
+
+                <div class="h-4 w-full bg-black/5 dark:bg-white/10 rounded-full overflow-hidden max-w-2xl mx-auto">
+                    <div id="progress-bar" class="h-full w-0 bg-brand rounded-full transition-all duration-300 ease-linear shadow-[0_0_30px_rgba(0,122,255,0.6)]"></div>
+                </div>
+
+                <div class="flex justify-center gap-12 border-t border-black/10 dark:border-white/10 pt-12">
+                    <div>
+                        <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Transfer Rate</div>
+                        <div class="mono text-3xl font-bold italic dark:text-white" id="bitrate">0.0 Gb/s</div>
+                    </div>
+                    <div class="w-px h-12 bg-black/10 dark:bg-white/10"></div>
+                    <div>
+                        <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Encryption</div>
+                        <div class="mono text-3xl font-bold text-emerald-500 italic">SECURE</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- STEP 4: Success -->
+            <section id="step-4" class="space-y-10 text-center hidden animate-in fade-in zoom-in-95 duration-700">
+                <div class="w-32 h-32 bg-emerald-500 rounded-[48px] flex items-center justify-center mx-auto shadow-[0_20px_50px_rgba(16,185,129,0.4)]">
+                    <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <div class="space-y-4">
+                    <h2 class="text-5xl font-black tracking-tight dark:text-white">Mapping Successful.</h2>
+                    <p id="final-desc" class="text-slate-500 dark:text-slate-400 text-xl font-medium max-w-lg mx-auto">Virtualized architecture has been integrated into the system memory map.</p>
+                </div>
+
+                <div class="space-y-6 pt-10">
+                    <a href="https://www.youtube.com/watch?v=xvFZjo5PgG0" target="_blank" class="inline-block w-full max-w-md py-6 rounded-3xl bg-brand text-white font-black text-2xl hover:scale-[1.05] transition-all shadow-2xl shadow-brand/30">
+                        Finalize Sync
+                    </a>
+                    <div>
+                        <button onclick="location.reload()" class="opacity-40 hover:opacity-100 transition-opacity text-xs font-black uppercase tracking-[0.4em] dark:text-white">New Provisioning</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        let currentCategory = 'RAM';
+        let selectedValue = '';
+        let selectedOsName = '';
+        const sections = ['step-1', 'step-review', 'step-2', 'step-3', 'step-4'];
+
+        const configs = {
+            'RAM': { 
+                title: 'Download RAM.', 
+                unit: 'GB RAM', 
+                values: ['8', '16', '32', '64'],
+                details: {
+                    '8': { pros: ['Low overhead', 'Immediate sync'], cons: ['Bottleneck risk', 'Limited multitasking'] },
+                    '16': { pros: ['Balanced performance', 'Standard gaming'], cons: ['Not future-proof'] },
+                    '32': { pros: ['High workload capacity', 'Workstation ready'], cons: ['Slightly higher latency'] },
+                    '64': { pros: ['Maximum throughput', 'Hyper-optimized'], cons: ['Significant memory pressure'] }
+                }
+            },
+            'Storage': { 
+                title: 'Download Storage.', 
+                unit: '', 
+                values: ['256 GB SSD', '512 GB SSD', '1 TB NVMe', '2 TB NVMe'],
+                details: {
+                    '256 GB SSD': { pros: ['Fast initialization', 'Lightweight'], cons: ['Low capacity'] },
+                    '512 GB SSD': { pros: ['Great for OS caching', 'Reliable'], cons: ['Average speeds'] },
+                    '1 TB NVMe': { pros: ['Extremely fast', 'Gamer choice'], cons: ['High cloud bandwidth'] },
+                    '2 TB NVMe': { pros: ['Endless workspace', 'Professional'], cons: ['Longer mapping time'] }
+                }
+            },
+            'GPU': { 
+                title: 'Download GPU.', 
+                unit: '', 
+                values: ['RTX 3060', 'RTX 5070ti', 'RTX 5080', 'RTX 5090'],
+                details: {
+                    'RTX 3060': { pros: ['Solid 1080p', 'Energy efficient'], cons: ['Legacy architecture'] },
+                    'RTX 5070ti': { pros: ['Modern ray-tracing', 'Great value'], cons: ['High VRAM usage'] },
+                    'RTX 5080': { pros: ['4K Ultra performance', 'DLSS 4.0 Support'], cons: ['Thermal virtualization'] },
+                    'RTX 5090': { pros: ['God-tier performance', 'AI Accelerated'], cons: ['Extreme power virtual requirement'] }
+                }
+            },
+            'CPU': { 
+                title: 'Download CPU.', 
+                unit: '', 
+                values: ['Intel i7-14700K', 'Intel i9-14900K', 'Ryzen 7 7800X3D', 'Ryzen 9 9800X3D'],
+                details: {
+                    'Intel i7-14700K': { pros: ['Hybrid core excellence', 'Fast clock'], cons: ['Higher thermal dissipation'] },
+                    'Intel i9-14900K': { pros: ['Ultimate multi-threaded', 'Professional'], cons: ['Requires high bandwidth'] },
+                    'Ryzen 7 7800X3D': { pros: ['Gaming king', '3D V-Cache'], cons: ['Lower productivity score'] },
+                    'Ryzen 9 9800X3D': { pros: ['Next-gen titan', 'Infinite cache'], cons: ['Pre-release firmware instability'] }
+                }
+            }
+        };
+
+        function setCategory(cat) {
+            currentCategory = cat;
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('active');
+                if (el.innerText === cat) el.classList.add('active');
+            });
+            
+            const config = configs[cat];
+            document.getElementById('main-title').innerText = config.title;
+            
+            const grid = document.getElementById('selection-grid');
+            grid.innerHTML = '';
+            
+            config.values.forEach(val => {
+                const btn = document.createElement('button');
+                btn.className = "group p-8 rounded-[32px] bg-black/5 dark:bg-white/10 hover:bg-brand hover:text-white transition-all duration-500 text-center shadow-lg border border-transparent hover:border-white/20";
+                btn.onclick = () => selectComponent(val);
+                btn.innerHTML = `
+                    <div class="text-3xl font-black mb-2 italic dark:text-inherit">${val}</div>
+                    <div class="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60 dark:text-inherit">${config.unit || 'Resource'}</div>
+                `;
+                grid.appendChild(btn);
+            });
+            
+            goToStep(1);
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark');
+            document.body.classList.toggle('light');
+        }
+
+        function goToStep(idSuffix) {
+            sections.forEach(id => document.getElementById(id).classList.add('hidden'));
+            const target = (typeof idSuffix === 'number') ? `step-${idSuffix}` : `step-${idSuffix}`;
+            document.getElementById(target).classList.remove('hidden');
+        }
+
+        function selectComponent(val) {
+            selectedValue = val;
+            const detail = configs[currentCategory].details[val];
+            
+            document.getElementById('review-title').innerText = `Optimize ${val}?`;
+            const pros = document.getElementById('pros-list');
+            const cons = document.getElementById('cons-list');
+            pros.innerHTML = detail.pros.map(p => `<li>• ${p}</li>`).join('');
+            cons.innerHTML = detail.cons.map(c => `<li>• ${c}</li>`).join('');
+            
+            goToStep('review');
+        }
+
+        function setOs(name, color) {
+            selectedOsName = name;
+            document.querySelectorAll('.os-card').forEach(btn => {
+                btn.classList.remove('selected');
+                btn.style.setProperty('--selected-color', 'transparent');
+            });
+            const activeBtn = event.currentTarget;
+            activeBtn.classList.add('selected');
+            activeBtn.style.setProperty('--selected-color', color);
+            
+            document.getElementById('progress-bar').style.backgroundColor = color;
+            document.getElementById('percent-text').style.color = color;
+            document.getElementById('start-btn').disabled = false;
+        }
+
+        function startDownload() {
+            goToStep(3);
+            let progress = 0;
+            const progressBar = document.getElementById('progress-bar');
+            const percentText = document.getElementById('percent-text');
+            const subStatus = document.getElementById('sub-status');
+            const bitrateEl = document.getElementById('bitrate');
+
+            const statusMessages = ["Connecting to Node...", "Verifying License...", "Mapping Kernel...", "Injecting Driver...", "Cleaning Cache...", "Final Syncing..."];
+            const duration = Math.floor(Math.random() * 30000) + 20000; 
+            const intervalTime = duration / 100;
+
+            const timer = setInterval(() => {
+                progress++;
+                progressBar.style.width = progress + '%';
+                percentText.innerText = progress + '%';
+                
+                if (progress % 15 === 0 || progress === 1) {
+                    const msgIdx = Math.floor((progress / 100) * statusMessages.length);
+                    subStatus.innerText = statusMessages[msgIdx] || statusMessages[statusMessages.length - 1];
+                    bitrateEl.innerText = (Math.random() * (45 - 22) + 22).toFixed(1) + ' Gb/s';
+                }
+
+                if (progress >= 100) {
+                    clearInterval(timer);
+                    setTimeout(() => {
+                        document.getElementById('final-desc').innerText = `${selectedValue} has been successfully virtualized for your ${selectedOsName} environment.`;
+                        goToStep(4);
+                    }, 1000);
+                }
+            }, intervalTime);
+        }
+
+        // Init
+        setCategory('RAM');
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.body.classList.add('dark');
+        } else {
+            document.body.classList.add('light');
+        }
+    </script>
+</body>
+</html>
