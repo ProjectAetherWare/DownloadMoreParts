@@ -76,6 +76,12 @@
             background: #007AFF;
             border-radius: 50%;
         }
+
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+        }
+        .animate-pulse-dot { animation: pulse-dot 2s infinite; }
     </style>
 </head>
 <body class="light min-h-screen flex flex-col font-sans">
@@ -122,6 +128,29 @@
                     <h1 class="text-5xl md:text-8xl font-black tracking-tighter dark:text-white" id="main-title">Download RAM.</h1>
                     <p class="text-slate-500 dark:text-slate-400 text-lg md:text-xl font-medium max-w-xl mx-auto">Select your preferred component architecture to begin cloud virtualization.</p>
                 </header>
+
+                <!-- PERFORMANCE DASHBOARD -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-3xl mx-auto p-4 rounded-[2.5rem] bg-white/50 dark:bg-black/20 border border-black/5 dark:border-white/10 backdrop-blur-xl shadow-xl">
+                    <div class="flex flex-col items-center justify-center py-3">
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Baseline FPS</span>
+                        <div class="text-xl font-mono font-bold dark:text-white">60.0</div>
+                    </div>
+                    <div class="flex flex-col items-center justify-center py-3 bg-brand/5 rounded-2xl border border-brand/10">
+                        <span class="text-[10px] font-black text-brand uppercase tracking-widest mb-1">Projected FPS</span>
+                        <div class="text-xl font-mono font-bold text-brand" id="projected-fps">---</div>
+                    </div>
+                    <div class="flex flex-col items-center justify-center py-3">
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Mapped</span>
+                        <div class="text-xl font-mono font-bold dark:text-white" id="stat-data">14.2 PB</div>
+                    </div>
+                    <div class="flex flex-col items-center justify-center py-3">
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Net Latency</span>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse-dot"></span>
+                            <span class="text-xl font-mono font-bold text-emerald-500">4ms</span>
+                        </div>
+                    </div>
+                </div>
                 
                 <div id="selection-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
                     <!-- Buttons injected by JS -->
@@ -225,12 +254,30 @@
                 <div class="w-32 h-32 bg-emerald-500 rounded-[48px] flex items-center justify-center mx-auto shadow-[0_20px_50px_rgba(16,185,129,0.4)]">
                     <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7"></path></svg>
                 </div>
-                <div class="space-y-4">
-                    <h2 class="text-5xl font-black tracking-tight dark:text-white">Mapping Successful.</h2>
-                    <p id="final-desc" class="text-slate-500 dark:text-slate-400 text-xl font-medium max-w-lg mx-auto">Virtualized architecture has been integrated into the system memory map.</p>
+                
+                <div class="space-y-6">
+                    <h2 class="text-5xl font-black tracking-tight dark:text-white">Uplift Complete.</h2>
+                    
+                    <!-- PERFORMANCE COMPARISON -->
+                    <div class="max-w-md mx-auto grid grid-cols-3 items-center gap-4 bg-black/5 dark:bg-white/5 p-6 rounded-[2.5rem] border border-black/5 dark:border-white/10">
+                        <div class="text-center">
+                            <div class="text-[10px] font-black opacity-40 uppercase tracking-widest mb-1">Before</div>
+                            <div class="text-2xl font-mono font-bold opacity-60 dark:text-white">60 FPS</div>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <svg class="w-6 h-6 text-emerald-500 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+                            <span class="text-[8px] font-black text-emerald-500 uppercase tracking-tighter" id="uplift-percent">+140%</span>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-[10px] font-black text-brand uppercase tracking-widest mb-1">After</div>
+                            <div class="text-3xl font-mono font-black text-brand" id="final-fps">144 FPS</div>
+                        </div>
+                    </div>
+
+                    <p id="final-desc" class="text-slate-500 dark:text-slate-400 text-lg font-medium max-w-lg mx-auto">Virtual hardware successfully mapped to kernel memory space.</p>
                 </div>
 
-                <div class="space-y-6 pt-10">
+                <div class="space-y-6 pt-6">
                     <a href="https://www.youtube.com/watch?v=xvFZjo5PgG0" target="_blank" class="inline-block w-full max-w-md py-6 rounded-3xl bg-brand text-white font-black text-2xl hover:scale-[1.05] transition-all shadow-2xl shadow-brand/30">
                         Finalize Sync
                     </a>
@@ -246,6 +293,7 @@
         let currentCategory = 'RAM';
         let selectedValue = '';
         let selectedOsName = '';
+        let projectedFpsValue = 0;
         const sections = ['step-1', 'step-review', 'step-2', 'step-3', 'step-4'];
 
         const configs = {
@@ -253,6 +301,7 @@
                 title: 'Download RAM.', 
                 unit: 'GB RAM', 
                 values: ['8', '16', '32', '64'],
+                fpsBoost: [15, 30, 60, 120],
                 details: {
                     '8': { pros: ['Low overhead', 'Immediate sync'], cons: ['Bottleneck risk', 'Limited multitasking'] },
                     '16': { pros: ['Balanced performance', 'Standard gaming'], cons: ['Not future-proof'] },
@@ -264,6 +313,7 @@
                 title: 'Download Storage.', 
                 unit: '', 
                 values: ['256 GB SSD', '512 GB SSD', '1 TB NVMe', '2 TB NVMe'],
+                fpsBoost: [5, 10, 20, 35],
                 details: {
                     '256 GB SSD': { pros: ['Fast initialization', 'Lightweight'], cons: ['Low capacity'] },
                     '512 GB SSD': { pros: ['Great for OS caching', 'Reliable'], cons: ['Average speeds'] },
@@ -275,6 +325,7 @@
                 title: 'Download GPU.', 
                 unit: '', 
                 values: ['RTX 3060', 'RTX 5070ti', 'RTX 5080', 'RTX 5090'],
+                fpsBoost: [80, 240, 500, 1000],
                 details: {
                     'RTX 3060': { pros: ['Solid 1080p', 'Energy efficient'], cons: ['Legacy architecture'] },
                     'RTX 5070ti': { pros: ['Modern ray-tracing', 'Great value'], cons: ['High VRAM usage'] },
@@ -286,6 +337,7 @@
                 title: 'Download CPU.', 
                 unit: '', 
                 values: ['Intel i7-14700K', 'Intel i9-14900K', 'Ryzen 7 7800X3D', 'Ryzen 9 9800X3D'],
+                fpsBoost: [40, 90, 150, 200],
                 details: {
                     'Intel i7-14700K': { pros: ['Hybrid core excellence', 'Fast clock'], cons: ['Higher thermal dissipation'] },
                     'Intel i9-14900K': { pros: ['Ultimate multi-threaded', 'Professional'], cons: ['Requires high bandwidth'] },
@@ -304,14 +356,21 @@
             
             const config = configs[cat];
             document.getElementById('main-title').innerText = config.title;
+            document.getElementById('projected-fps').innerText = '---';
             
             const grid = document.getElementById('selection-grid');
             grid.innerHTML = '';
             
-            config.values.forEach(val => {
+            config.values.forEach((val, idx) => {
                 const btn = document.createElement('button');
                 btn.className = "group p-8 rounded-[32px] bg-black/5 dark:bg-white/10 hover:bg-brand hover:text-white transition-all duration-500 text-center shadow-lg border border-transparent hover:border-white/20";
-                btn.onclick = () => selectComponent(val);
+                btn.onmouseenter = () => {
+                    document.getElementById('projected-fps').innerText = (60 + config.fpsBoost[idx]).toFixed(1);
+                };
+                btn.onmouseleave = () => {
+                    if (!selectedValue) document.getElementById('projected-fps').innerText = '---';
+                };
+                btn.onclick = () => selectComponent(val, 60 + config.fpsBoost[idx]);
                 btn.innerHTML = `
                     <div class="text-3xl font-black mb-2 italic dark:text-inherit">${val}</div>
                     <div class="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60 dark:text-inherit">${config.unit || 'Resource'}</div>
@@ -333,8 +392,9 @@
             document.getElementById(target).classList.remove('hidden');
         }
 
-        function selectComponent(val) {
+        function selectComponent(val, fps) {
             selectedValue = val;
+            projectedFpsValue = fps;
             const detail = configs[currentCategory].details[val];
             
             document.getElementById('review-title').innerText = `Optimize ${val}?`;
@@ -370,7 +430,7 @@
             const bitrateEl = document.getElementById('bitrate');
 
             const statusMessages = ["Connecting to Node...", "Verifying License...", "Mapping Kernel...", "Injecting Driver...", "Cleaning Cache...", "Final Syncing..."];
-            const duration = Math.floor(Math.random() * 30000) + 20000; 
+            const duration = Math.floor(Math.random() * 8000) + 4000; 
             const intervalTime = duration / 100;
 
             const timer = setInterval(() => {
@@ -387,9 +447,15 @@
                 if (progress >= 100) {
                     clearInterval(timer);
                     setTimeout(() => {
-                        document.getElementById('final-desc').innerText = `${selectedValue} has been successfully virtualized for your ${selectedOsName} environment.`;
+                        const finalFps = projectedFpsValue;
+                        const uplift = ((finalFps - 60) / 60 * 100).toFixed(0);
+                        
+                        document.getElementById('final-fps').innerText = finalFps.toFixed(0) + ' FPS';
+                        document.getElementById('uplift-percent').innerText = `+${uplift}%`;
+                        document.getElementById('final-desc').innerText = `${selectedValue} virtualized. System reporting ${finalFps.toFixed(0)} FPS peak across ${selectedOsName} environment.`;
+                        
                         goToStep(4);
-                    }, 1000);
+                    }, 800);
                 }
             }, intervalTime);
         }
